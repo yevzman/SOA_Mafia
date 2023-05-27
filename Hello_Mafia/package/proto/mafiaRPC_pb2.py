@@ -13,17 +13,23 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emafiaRPC.proto\x12\x05mafia\"\x1a\n\x07Request\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x1b\n\x08Response\x12\x0f\n\x07message\x18\x01 \x01(\t23\n\x08MafiaReq\x12\'\n\x02\x44o\x12\x0e.mafia.Request\x1a\x0f.mafia.Response\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emafiaRPC.proto\x12\x05mafia\"\x1a\n\x07Request\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x16\n\x08PlayerId\x12\n\n\x02id\x18\x01 \x01(\r\"3\n\x06Player\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0f\n\x07\x61\x64\x64ress\x18\x03 \x01(\t\"G\n\x08Response\x12\"\n\x06status\x18\x01 \x01(\x0e\x32\r.mafia.StatusH\x00\x88\x01\x01\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\tB\t\n\x07_status*\x1f\n\x06Status\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x0b\n\x07SUCCESS\x10\x01\x32\xa4\x01\n\x0bMafiaClient\x12\x33\n\x0eGetNewPlayerId\x12\x0e.mafia.Request\x1a\x0f.mafia.PlayerId\"\x00\x12/\n\tSubscribe\x12\r.mafia.Player\x1a\x0f.mafia.Response\"\x00\x30\x01\x12/\n\x0bUnsubscribe\x12\r.mafia.Player\x1a\x0f.mafia.Response\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mafiaRPC_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
+  _STATUS._serialized_start=203
+  _STATUS._serialized_end=234
   _REQUEST._serialized_start=25
   _REQUEST._serialized_end=51
-  _RESPONSE._serialized_start=53
-  _RESPONSE._serialized_end=80
-  _MAFIAREQ._serialized_start=82
-  _MAFIAREQ._serialized_end=133
+  _PLAYERID._serialized_start=53
+  _PLAYERID._serialized_end=75
+  _PLAYER._serialized_start=77
+  _PLAYER._serialized_end=128
+  _RESPONSE._serialized_start=130
+  _RESPONSE._serialized_end=201
+  _MAFIACLIENT._serialized_start=237
+  _MAFIACLIENT._serialized_end=401
 # @@protoc_insertion_point(module_scope)

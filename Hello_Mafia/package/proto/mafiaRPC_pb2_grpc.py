@@ -2,10 +2,10 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import mafiaRPC_pb2 as mafiaRPC__pb2
+from . import mafiaRPC_pb2 as mafiaRPC__pb2
 
 
-class MafiaReqStub(object):
+class MafiaClientStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -14,42 +14,74 @@ class MafiaReqStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Do = channel.unary_unary(
-                '/mafia.MafiaReq/Do',
+        self.GetNewPlayerId = channel.unary_unary(
+                '/mafia.MafiaClient/GetNewPlayerId',
                 request_serializer=mafiaRPC__pb2.Request.SerializeToString,
+                response_deserializer=mafiaRPC__pb2.PlayerId.FromString,
+                )
+        self.Subscribe = channel.unary_stream(
+                '/mafia.MafiaClient/Subscribe',
+                request_serializer=mafiaRPC__pb2.Player.SerializeToString,
+                response_deserializer=mafiaRPC__pb2.Response.FromString,
+                )
+        self.Unsubscribe = channel.unary_unary(
+                '/mafia.MafiaClient/Unsubscribe',
+                request_serializer=mafiaRPC__pb2.Player.SerializeToString,
                 response_deserializer=mafiaRPC__pb2.Response.FromString,
                 )
 
 
-class MafiaReqServicer(object):
+class MafiaClientServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def Do(self, request, context):
+    def GetNewPlayerId(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Subscribe(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Unsubscribe(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_MafiaReqServicer_to_server(servicer, server):
+def add_MafiaClientServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Do': grpc.unary_unary_rpc_method_handler(
-                    servicer.Do,
+            'GetNewPlayerId': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNewPlayerId,
                     request_deserializer=mafiaRPC__pb2.Request.FromString,
+                    response_serializer=mafiaRPC__pb2.PlayerId.SerializeToString,
+            ),
+            'Subscribe': grpc.unary_stream_rpc_method_handler(
+                    servicer.Subscribe,
+                    request_deserializer=mafiaRPC__pb2.Player.FromString,
+                    response_serializer=mafiaRPC__pb2.Response.SerializeToString,
+            ),
+            'Unsubscribe': grpc.unary_unary_rpc_method_handler(
+                    servicer.Unsubscribe,
+                    request_deserializer=mafiaRPC__pb2.Player.FromString,
                     response_serializer=mafiaRPC__pb2.Response.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'mafia.MafiaReq', rpc_method_handlers)
+            'mafia.MafiaClient', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class MafiaReq(object):
+class MafiaClient(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Do(request,
+    def GetNewPlayerId(request,
             target,
             options=(),
             channel_credentials=None,
@@ -59,8 +91,42 @@ class MafiaReq(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/mafia.MafiaReq/Do',
+        return grpc.experimental.unary_unary(request, target, '/mafia.MafiaClient/GetNewPlayerId',
             mafiaRPC__pb2.Request.SerializeToString,
+            mafiaRPC__pb2.PlayerId.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Subscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/mafia.MafiaClient/Subscribe',
+            mafiaRPC__pb2.Player.SerializeToString,
+            mafiaRPC__pb2.Response.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Unsubscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/mafia.MafiaClient/Unsubscribe',
+            mafiaRPC__pb2.Player.SerializeToString,
             mafiaRPC__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
