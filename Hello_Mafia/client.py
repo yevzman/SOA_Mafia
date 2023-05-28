@@ -14,7 +14,7 @@ def start_session(stub, player_name):
     response: PlayerId = stub.GetNewPlayerId(Request(message=''))
     if player_name == default_player_name:
         player_name = f'Guest_{response.id}'
-    print(f'New player with name {player_name} and id {response.id}')
+    # print(f'New player with name {player_name} and id {response.id}')
     host_address = socket.gethostbyname(socket.gethostname())
     player = Player(id=response.id, name=player_name, address=host_address)
     for event in stub.Subscribe(player):

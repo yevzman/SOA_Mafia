@@ -1,15 +1,16 @@
 import threading
 
+EXTEND_COEF = 1.5
+
 
 class IdGenerator:
     def __init__(self):
         self.id_set = set([i for i in range(1, 5, 1)])
         self.max_value = 4
-        self.mul_coef = 1.5
         self.lock = threading.Lock()
 
     def add_new_values(self) -> None:
-        new_max_value = int(self.max_value * self.mul_coef)
+        new_max_value = int(self.max_value * EXTEND_COEF)
         for i in range(self.max_value, new_max_value):
             self.id_set.add(i)
         self.max_value = new_max_value
