@@ -70,6 +70,7 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
             self.event_queue.pop()
 
     def InsertEventIntoQueue(self, event_data, player_id, notifier):
+        logger.debug(f'Insert event: {event_data}')
         logger.debug(f'Active Players: {self.id_generator.count_active_players()}')
         if self.id_generator.count_active_players() > 1:
             with notifier:
@@ -77,13 +78,13 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
                 self.event_queue.append(event_data)
                 self.event_queue_lock.release()
                 players = self.player_manager.get_all_players()
+                self.add_event_barrier = threading.Barrier(len(players) - 1, action=self.RemoveEventFromQueue)
                 for id in players:
                     if id != player_id:
                         self.player_manager.notify_player(id)
-                self.RemoveEventFromQueue()
 
     def GetNewPlayerId(self, request, context):
-        logger.info('New player id required!')
+        logger.info('New player id required')
         new_id = self.id_generator.get_id()
         logger.debug(f'Returned player id value: {new_id}')
         return PlayerId(id=new_id)
@@ -97,13 +98,20 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
         while True:
             with notifier:
                 notifier.wait()
+            if len(self.event_queue) == 0:
+                return Response(data="OK", status=SUCCESS)
             response = Response(data=self.event_queue[0], status=SUCCESS)
+            self.add_event_barrier.wait()
             yield response
 
     def Unsubscribe(self, request: Player, context) -> Response:
         logger.info(f'Player with id {request.id} unsubscribed from server!')
+        if not self.player_manager.is_player_exist(request.id):
+            return Response(data="Such player does not exists!", status=FAIL)
+        notifier = self.player_manager.get_player_notifier(request.id)
+        self.InsertEventIntoQueue(f'Player {request.name} left server!', request.id, notifier)
+        notifier.notify()
         self.id_generator.add_id(request.id)
-        self.InsertEventIntoQueue(f'Player {request.name} left server!')
         return Response(data="OK", status=SUCCESS)
 
 
@@ -111,6 +119,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=thread_amount))
     mafiaGRPC.add_MafiaClientServicer_to_server(MafiaClientServicer(), server)
     server.add_insecure_port('[::]:5345')
+    logger.debug('Starting server on port 5345')
     server.start()
     server.wait_for_termination()
 

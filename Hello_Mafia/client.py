@@ -3,11 +3,17 @@ from __future__ import print_function
 import socket
 import sys
 import grpc
+import threading
 import package.proto.mafiaRPC_pb2_grpc as mafiaGRPC
 from package.proto.mafiaRPC_pb2 import Player, Request, PlayerId, Response, Status, SUCCESS, FAIL
 from optparse import OptionParser
 
 default_player_name = sys.platform
+
+
+def start_notifier(stub, player):
+    for event in stub.Subscribe(player):
+        print('\n' + event.data)
 
 
 def start_session(stub, player_name):
@@ -17,12 +23,15 @@ def start_session(stub, player_name):
     # print(f'New player with name {player_name} and id {response.id}')
     host_address = socket.gethostbyname(socket.gethostname())
     player = Player(id=response.id, name=player_name, address=host_address)
-    for event in stub.Subscribe(player):
-        print(event.data)
-    print('END!')
-    print(response)
-    response: Response = stub.Unsubscribe(player)
-    print('Response status: ', response.status)
+    t = threading.Thread(target=start_notifier, args=(stub, player,))
+    t.start()
+
+    while True:
+        result = input('If you want to left server, write `quit`: ')
+        if result == 'quit':
+            response: Response = stub.Unsubscribe(player)
+            print('Response status: ', response.status)
+            return
 
 
 def run(address: str, port: str, player_name: str):
@@ -37,9 +46,7 @@ if __name__ == '__main__':
                       help='connect to server using custom address')
     parser.add_option("-p", "--port", dest="port", default='5345',
                       help='connect to server using custom port')
-    parser.add_option("-n", "--name", dest="name", default=default_player_name,
-                      help='set player name')
-
     (options, args) = parser.parse_args()
-    print(options)
-    run(options.address, options.port, options.name)
+
+    name = input('Please input your name: ')
+    run(options.address, options.port, name)
