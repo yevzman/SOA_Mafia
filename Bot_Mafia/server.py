@@ -6,6 +6,7 @@ from concurrent import futures
 from package.idgenerator import IdGenerator, EXTEND_COEF
 import logging
 import threading
+from package.game_manager import *
 
 FORMAT = '%(asctime)s - [%(levelname)s] -  %(name)s - (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 thread_amount = 10
+game_event_queue = EventQueue()
 
 
 class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
@@ -20,31 +22,9 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
         self.id_generator = IdGenerator()
         self.cond_var = threading.Condition()
         self.event_queue_lock = threading.Lock()
-        self.add_event_barrier = threading.Barrier(parties=thread_amount, action=self.RemoveEventFromQueue)
+        self.add_event_barrier = None
         self.event_queue = []  # Players queue
         self.player_manager = PlayerManager()
-
-    def RemoveEventFromQueue(self):
-        with self.event_queue_lock:
-            logger.debug(f'All Events: {self.event_queue}')
-            logger.debug(f'Remove Event: {self.event_queue[0]}')
-            self.event_queue.pop()
-
-    def InsertEventIntoQueue(self, event_data, player_id, notifier):
-        if self.id_generator.count_active_players() > 1:
-            with notifier:
-                logger.debug(f'Insert event: {event_data}')
-                logger.debug(f'Active Players: {self.id_generator.count_active_players()}')
-                self.event_queue_lock.acquire()
-                self.event_queue.append(event_data)
-                self.event_queue_lock.release()
-                players = self.player_manager.get_all_players()
-                logger.debug(f'Players length: {len(players)}')
-                logger.debug(f'Players: {players}')
-                self.add_event_barrier = threading.Barrier(len(players) - 1, action=self.RemoveEventFromQueue)
-                for id in players:
-                    if id != player_id:
-                        self.player_manager.notify_player(id)
 
     def GetNewPlayerId(self, request, context):
         logger.info('New player id required')
@@ -52,19 +32,22 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
         logger.debug(f'Returned player id value: {new_id}')
         return PlayerId(id=new_id)
 
+    def SetBarier(self, n: int):
+        self.add_event_barrier = threading.Barrier(n, action=game_event_queue.get_event)
+
     def Subscribe(self, request: Player, context):
         logger.info(f'New player with name {request.name} and id {request.id} is subscribing: {request}')
         self.player_manager.add_player(request)
         notifier = self.player_manager.get_player_notifier(request.id)
-        self.InsertEventIntoQueue(f'New player {request.name} has joined the server', request.id, notifier)
+        game_event_queue.add_event(request.id, event=AddPlayerEvent(request.name, request.id, notifier, self.SetBarier))
 
         while True:
             with notifier:
                 notifier.wait()
             logger.debug('')
-            if len(self.event_queue) == 0:
-                return Response(data="OK", status=SUCCESS)
-            response = Response(data=self.event_queue[0], status=SUCCESS)
+            #if len(self.event_queue) == 0:
+                #return Response(data="OK", status=SUCCESS)
+            response = game_event_queue.get_event(request.id).run()
             self.add_event_barrier.wait()
             yield response
 
