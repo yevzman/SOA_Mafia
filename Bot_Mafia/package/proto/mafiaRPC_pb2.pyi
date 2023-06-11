@@ -3,9 +3,16 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
+DAY_VOTE: Status
 DESCRIPTOR: _descriptor.FileDescriptor
+END_GAME: Status
 FAIL: Status
+MORNING_NOTIFICATION: Status
+NIGHT_VOTE: Status
+ROLE_DISTRIBUTION: Status
+START_GAME: Status
 SUCCESS: Status
+YOU_KILLED: Status
 
 class Player(_message.Message):
     __slots__ = ["address", "id", "name"]

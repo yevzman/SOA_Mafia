@@ -32,32 +32,36 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
         logger.debug(f'Returned player id value: {new_id}')
         return PlayerId(id=new_id)
 
-    def SetBarier(self, n: int):
-        self.add_event_barrier = threading.Barrier(n, action=game_event_queue.get_event)
-
     def Subscribe(self, request: Player, context):
         logger.info(f'New player with name {request.name} and id {request.id} is subscribing: {request}')
         self.player_manager.add_player(request)
         notifier = self.player_manager.get_player_notifier(request.id)
-        game_event_queue.add_event(request.id, event=AddPlayerEvent(request.name, request.id, notifier, self.SetBarier))
+        for player_id in self.player_manager.get_all_players():
+            if player_id == request.id:
+                continue
+            if self.player_manager.player_status[player_id] == 0:
+                game_event_queue.add_event(player_id, event=AddPlayerEvent(request.name, request.id))
+                self.player_manager.notify_player(player_id, is_in_game=False)
 
         while True:
             with notifier:
                 notifier.wait()
-            logger.debug('')
-            #if len(self.event_queue) == 0:
-                #return Response(data="OK", status=SUCCESS)
-            response = game_event_queue.get_event(request.id).run()
-            self.add_event_barrier.wait()
-            yield response
+            while game_event_queue.queue_has_any_event(request.id):
+                response = game_event_queue.get_event(request.id).run()
+                yield response
 
     def Unsubscribe(self, request: Player, context) -> Response:
         logger.info(f'Player with id {request.id} is unsubscribing from server!')
         if not self.player_manager.is_player_exist(request.id):
             return Response(data="Such player does not exists!", status=FAIL)
+
         notifier = self.player_manager.get_player_notifier(request.id)
-        self.InsertEventIntoQueue(f'Player {request.name} left server!', request.id, notifier)
-        self.player_manager.notify_player(request.id)
+        print()
+        for player_id in self.player_manager.get_all_players():
+            if request.id != player_id:
+                game_event_queue.add_event(player_id, event=LeavePlayerEvent(request.name, request.id))
+                self.player_manager.notify_player(player_id, is_in_game=False)
+
         self.id_generator.add_id(request.id)
         self.player_manager.delete_player(request.id)
         return Response(data="OK", status=SUCCESS)

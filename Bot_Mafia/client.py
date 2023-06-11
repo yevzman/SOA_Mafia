@@ -6,24 +6,40 @@ import sys
 import grpc
 import threading
 import package.proto.mafiaRPC_pb2_grpc as mafiaGRPC
-from package.proto.mafiaRPC_pb2 import Player, Request, PlayerId, Response, Status, SUCCESS, FAIL
+from package.proto.mafiaRPC_pb2 import *
 from optparse import OptionParser
+from enum import Enum
+
 
 default_player_name = sys.platform
-session_status = 1
+connection_status = 1
+
+
+class GameStatus(Enum):
+    STARTED = 1
+    DAY_VOTE = 2
+    NIGHT = 3
+    NO_STATUS = 4
+
+
+game_status = GameStatus.NO_STATUS
 
 
 def start_notifier(stub, player):
+    global game_status
     try:
         for event in stub.Subscribe(player):
+            if event.status == START_GAME:
+                game_status = GameStatus.STARTED
             print('\n' + event.data)
-            if session_status == 0:
+            if connection_status == 0:
                 return
     except Exception:
         pass
 
 
 def start_session(stub, player_name):
+    global game_status
     response: PlayerId = stub.GetNewPlayerId(Request(message=''))
     if player_name == default_player_name:
         player_name = f'Guest_{response.id}'
@@ -33,8 +49,13 @@ def start_session(stub, player_name):
     while True:
         ans = input('If you want join the game, write \'yes\', or no to quit the game: ')
         if ans == 'yes':
+            print('Please wait. When 4 players join the server, game will start!')
             t = threading.Thread(target=start_notifier, args=(stub, player,))
             t.start()
+            while game_status == GameStatus.NO_STATUS:
+                quit_ans = input('If you want leave game, write \'quit\': ')
+                if quit_ans == 'quit':
+                    stub.Unsubscribe(player)
             t.join()
         elif ans == 'no':
             response: Response = stub.Unsubscribe(player)

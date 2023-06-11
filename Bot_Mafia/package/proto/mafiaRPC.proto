@@ -18,6 +18,13 @@ service MafiaClient {
 enum Status {
   FAIL = 0;
   SUCCESS = 1;
+  START_GAME = 2;
+  YOU_KILLED = 3;
+  DAY_VOTE = 4;
+  NIGHT_VOTE = 5;
+  ROLE_DISTRIBUTION = 6;
+  END_GAME = 7;
+  MORNING_NOTIFICATION = 8;
 }
 
 message Request {
