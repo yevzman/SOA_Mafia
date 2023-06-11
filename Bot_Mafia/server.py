@@ -13,7 +13,7 @@ logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-thread_amount = 10
+thread_amount = 16
 game_event_queue = EventQueue()
 
 

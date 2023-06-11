@@ -224,7 +224,7 @@ class SessionMaker:
         self.player_manager: PlayerManager = _player_manager
         self.lock = threading.Lock()
         self.NEED_PLAYER = 4
-        self.MAX_SESSIONS = 5
+        self.MAX_SESSIONS = 4
         self.CURRENT_AMOUNT_SESSION = 0
         self.notifier = threading.Condition()
         self.executor = ThreadPoolExecutor(max_workers=self.MAX_SESSIONS)
