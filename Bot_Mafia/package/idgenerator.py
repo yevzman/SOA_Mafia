@@ -21,7 +21,7 @@ class IdGenerator:
                 self.add_new_values()
             return self.id_set.pop()
 
-    def add_id(self, _id: int) -> None:
+    def return_id(self, _id: int) -> None:
         with self.lock:
             self.id_set.add(_id)
 

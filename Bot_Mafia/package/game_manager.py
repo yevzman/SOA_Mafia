@@ -44,15 +44,34 @@ def get_players_list_str(players: list):
 
 
 class Event:
+    def __init__(self, message):
+        self.message = message
+
     def run(self) -> Response:
-        raise 'Unimplemented function'
+        return Response(data=self.message, status=SUCCESS)
 
 
 class EventQueue(metaclass=Singleton):
     # Singleton event queue
     def __init__(self):
         self.event_queue: dict[int: list[Event]] = dict()
+        self.session_action: dict[int: list[int]] = dict()
+        self.session_action_lock = threading.Lock()
         self.lock = threading.Lock()
+
+    def add_session_action(self, session_id, value):
+        with self.session_action_lock:
+            if session_id not in self.session_action:
+                self.session_action[session_id] = []
+            self.session_action[session_id].append(value)
+
+    def get_session_actions(self, session_id):
+        with self.session_action_lock:
+            return self.session_action.get(session_id, [])
+
+    def delete_session_actions(self, session_id):
+        with self.session_action_lock:
+            self.session_action.pop(session_id)
 
     def add_event(self, player_id: int, event: Event):
         with self.lock:
@@ -88,12 +107,15 @@ class LeavePlayerEvent(Event):
 
 
 class GameStartEvent(Event):
-    def __init__(self, players):
+    def __init__(self, players, session_id):
         self.players = players
         self.players_str = get_players_list_str(players)
+        self.session_id = session_id
 
     def run(self):
-        return Response(data=f'GAME STARTED.\nPlayers: {self.players_str}', status=START_GAME)
+        return Response(data=f'Game Started!'
+                             f'\nSession_ID: {self.session_id}'
+                             f'\nPlayers: {self.players_str}', status=START_GAME)
 
 
 class GameEndEvent(Event):
@@ -101,7 +123,7 @@ class GameEndEvent(Event):
         self.result = result
 
     def run(self):
-        return Response(data=f'GAME ENDED.\n{self.result}', status=END_GAME)
+        return Response(data=f'Game Ended.\n{self.result}', status=END_GAME)
 
 
 class RoleDistributionEvent(Event):
@@ -117,17 +139,18 @@ class MorningNotificationEvent(Event):
         self.killed_player = killed_player
 
     def run(self):
-        return Response(data=f'Mafia killed {self.killed_player}', status=)
+        return Response(data=f'Mafia killed {self.killed_player}', status=MORNING_NOTIFICATION)
 
 
-class DayEvent(Event):
+class VoteEvent(Event):
+    def __init__(self, players, status):
+        logger.debug(f'VoteEvent with status {status}')
+        self.players = players
+        self.players_str = get_players_list_str(players)
+        self.status = status
+
     def run(self):
-        pass
-
-
-class NightEvent(Event):
-    def run(self):
-        pass
+        return Response(data=f'Vote player you want to chose {self.players_str} using his ID', status=self.status)
 
 
 class MafiaWakeUpEvent(Event):
@@ -177,6 +200,7 @@ class PlayerManager:
                 self.session_maker.delete_player(self.player_dict[player_id])
                 self.player_dict.pop(player_id)
                 self.player_notifiers[player_id] = threading.Condition()
+                self.player_status[player_id] = False
 
     def get_player_notifier(self, player_id):
         if self.is_player_exist(player_id):
@@ -210,8 +234,8 @@ class SessionMaker:
         with self.lock:
             self.CURRENT_AMOUNT_SESSION += 1
             res = future.result()
+            logger.debug(f'Future result: {res}')
             for player in res:
-                self.player_queue.append(player)
                 self.player_manager.set_not_in_game_status(player.id)
 
     def try_create_new_session(self):
@@ -225,7 +249,7 @@ class SessionMaker:
             future.add_done_callback(self.after_session_end)
 
     def create_session(self, players: list[Player]):
-        time.sleep(2)
+        time.sleep(1)
         for player in players:
             self.player_manager.set_in_game_status(player.id)
         session_maker = SessionManager(players, self.player_manager)
@@ -235,9 +259,9 @@ class SessionMaker:
         logger.debug(f'New player {_player.name} added in SessionMaker')
         with self.lock:
             self.player_queue.append(_player)
-            if len(self.player_queue) >= self.NEED_PLAYER:
-                logger.debug('Amount of players in queue is valid for creating new session')
-                self.try_create_new_session()
+        if len(self.player_queue) >= self.NEED_PLAYER:
+            logger.debug('Amount of players in queue is valid for creating new session')
+            self.try_create_new_session()
 
     def delete_player(self, _player):
         with self.lock:
@@ -245,8 +269,8 @@ class SessionMaker:
 
 
 class SessionManager:
-    def __init__(self, _players: list, _player_manager: PlayerManager):
-        self.player_manger:PlayerManager = _player_manager
+    def __init__(self, _players: list[Player], _player_manager: PlayerManager):
+        self.player_manger: PlayerManager = _player_manager
         self.players: list[Player] = _players
         self.alive_players: list[Player] = copy.deepcopy(self.players)
 
@@ -256,6 +280,7 @@ class SessionManager:
         self.max_session_players = 4
         self.citizens_amount = 3
         self.mafias_amount = 1
+        self.session_id = _players[0].id
 
     def __notify_all_alive_players(self):
         for player in self.alive_players:
@@ -264,13 +289,27 @@ class SessionManager:
     def __start_game_notify(self):
         event_queue = EventQueue()
         for player in self.players:
-            event_queue.add_event(player.id, event=GameStartEvent(self.alive_players))
+            event_queue.add_event(player.id, event=GameStartEvent(self.alive_players, self.session_id))
         self.__notify_all_alive_players()
 
     def __end_game_notify(self, result):
         event_queue = EventQueue()
-        for player in self.players:
+        for player in self.alive_players:
             event_queue.add_event(player.id, event=GameEndEvent(result))
+        self.__notify_all_alive_players()
+        for player in self.alive_players:
+            self.player_manger.set_not_in_game_status(player.id)
+
+    def __start_day_notify(self):
+        event_queue = EventQueue()
+        for player in self.players:
+            event_queue.add_event(player.id, event=Event('Day started!'))
+        self.__notify_all_alive_players()
+
+    def __start_night_notify(self):
+        event_queue = EventQueue()
+        for player in self.players:
+            event_queue.add_event(player.id, event=Event('Night started!'))
         self.__notify_all_alive_players()
 
     def __distribute_roles(self):
@@ -279,21 +318,84 @@ class SessionManager:
         self.Mafias = random.choices(_players, k=self.mafias_amount)
         for player in self.Mafias:
             self.roles[player.id] = MafiaRole.MAFIA
-            event_queue.add_event(player.id, RoleDistributionEvent('mafia'))
+            event_queue.add_event(player.id, RoleDistributionEvent('MAFIA'))
             del _players[_players.index(player)]
         logger.debug('Mafias: ' + get_players_list_str(self.Mafias))
         self.Citizens = _players
         for player in self.Citizens:
             self.roles[player.id] = MafiaRole.CITIZEN
-            event_queue.add_event(player.id, event=RoleDistributionEvent('citizen'))
+            event_queue.add_event(player.id, event=RoleDistributionEvent('CITIZEN'))
         logger.debug('Citizens: ' + get_players_list_str(self.Citizens))
+        self.__notify_all_alive_players()
+
+    def __day_vote(self):
+        event_queue = EventQueue()
+        for player in self.alive_players:
+            event_queue.add_event(player.id, event=VoteEvent(self.alive_players, status=DAY_VOTE))
+        self.__notify_all_alive_players()
+        need_votes = len(self.alive_players)
+        while len(event_queue.get_session_actions(session_id=self.session_id)) != need_votes:
+            time.sleep(0)
+            continue
+        votes = event_queue.get_session_actions(session_id=self.session_id)
+        event_queue.delete_session_actions(session_id=self.session_id)
+        player_id = max(set(votes), key=votes.count)
+        return player_id
+
+    def __night_vote(self):
+        event_queue = EventQueue()
+        for player in self.Mafias:
+            event_queue.add_event(player.id, event=VoteEvent(self.Citizens, status=NIGHT_VOTE))
+        for player in self.Mafias:
+            self.player_manger.notify_player(player.id, True)
+        need_votes = len(self.Mafias)
+        while len(event_queue.get_session_actions(session_id=self.session_id)) != need_votes:
+            time.sleep(0)
+            continue
+        votes = event_queue.get_session_actions(session_id=self.session_id)
+        event_queue.delete_session_actions(session_id=self.session_id)
+        player_id = max(set(votes), key=votes.count)
+        return player_id
+
+    def __kill_player(self, player_id):
+        event_queue = EventQueue()
+        player = None
+        for p in self.alive_players:
+            if p.id == player_id:
+                player = p
+        logger.debug(f'Killed player: Name {player.name} Id {player.id}')
+        event_queue.add_event(player_id, Event(f'You was killed!'))
+        event_queue.add_event(player_id, event=GameEndEvent('You died!'))
+        self.player_manger.notify_player(player_id, True)
+        if player in self.Mafias:
+            logger.debug('Delete Player from Mafias')
+            del self.Mafias[self.Mafias.index(player)]
+        else:
+            logger.debug('Delete Player from Citizens')
+            del self.Citizens[self.Citizens.index(player)]
+        del self.alive_players[self.alive_players.index(player)]
+        self.player_manger.set_not_in_game_status(player_id)
+        for p in self.alive_players:
+            event_queue.add_event(p.id, Event(f'Player {player.name} died!'))
         self.__notify_all_alive_players()
 
     def start_game(self):
         self.__start_game_notify()
         self.__distribute_roles()
 
-        # game events ...
-        result = 'Citizens won!'
+        while 0 < len(self.Mafias) < len(self.Citizens):
+            logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
+            logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
+            self.__start_day_notify()
+            player_id = self.__day_vote()
+            self.__kill_player(player_id)   # day vote results
+            self.__start_night_notify()
+            player_id = self.__night_vote()
+            self.__kill_player(player_id)  # night vote results
+        result = None
+        if len(self.Mafias) == 0:
+            result = 'Citizens won the Game!'
+        else:
+            result = 'Mafia won the Game!'
         self.__end_game_notify(result=result)
         return self.players

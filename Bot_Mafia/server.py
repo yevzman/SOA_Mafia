@@ -62,9 +62,14 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
                 game_event_queue.add_event(player_id, event=LeavePlayerEvent(request.name, request.id))
                 self.player_manager.notify_player(player_id, is_in_game=False)
 
-        self.id_generator.add_id(request.id)
+        self.id_generator.return_id(request.id)
         self.player_manager.delete_player(request.id)
         return Response(data="OK", status=SUCCESS)
+
+    def SendVote(self, request: VoteRequest, context):
+        logger.debug(f'New vote for session {request.session_id} for player with id {request.player_id}')
+        game_event_queue.add_session_action(request.session_id, request.player_id)
+        return VoteResponse(status=SUCCESS)
 
 
 def serve():

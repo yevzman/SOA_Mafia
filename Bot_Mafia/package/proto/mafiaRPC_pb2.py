@@ -13,15 +13,15 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emafiaRPC.proto\x12\x05mafia\"\x1a\n\x07Request\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x16\n\x08PlayerId\x12\n\n\x02id\x18\x01 \x01(\r\"3\n\x06Player\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0f\n\x07\x61\x64\x64ress\x18\x03 \x01(\t\"G\n\x08Response\x12\"\n\x06status\x18\x01 \x01(\x0e\x32\r.mafia.StatusH\x00\x88\x01\x01\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\tB\t\n\x07_status*\x9c\x01\n\x06Status\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x0b\n\x07SUCCESS\x10\x01\x12\x0e\n\nSTART_GAME\x10\x02\x12\x0e\n\nYOU_KILLED\x10\x03\x12\x0c\n\x08\x44\x41Y_VOTE\x10\x04\x12\x0e\n\nNIGHT_VOTE\x10\x05\x12\x15\n\x11ROLE_DISTRIBUTION\x10\x06\x12\x0c\n\x08\x45ND_GAME\x10\x07\x12\x18\n\x14MORNING_NOTIFICATION\x10\x08\x32\xa4\x01\n\x0bMafiaClient\x12\x33\n\x0eGetNewPlayerId\x12\x0e.mafia.Request\x1a\x0f.mafia.PlayerId\"\x00\x12/\n\tSubscribe\x12\r.mafia.Player\x1a\x0f.mafia.Response\"\x00\x30\x01\x12/\n\x0bUnsubscribe\x12\r.mafia.Player\x1a\x0f.mafia.Response\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emafiaRPC.proto\x12\x05mafia\"\x1a\n\x07Request\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x16\n\x08PlayerId\x12\n\n\x02id\x18\x01 \x01(\r\"3\n\x06Player\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0f\n\x07\x61\x64\x64ress\x18\x03 \x01(\t\"G\n\x08Response\x12\"\n\x06status\x18\x01 \x01(\x0e\x32\r.mafia.StatusH\x00\x88\x01\x01\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\tB\t\n\x07_status\"4\n\x0bVoteRequest\x12\x12\n\nsession_id\x18\x01 \x01(\x05\x12\x11\n\tplayer_id\x18\x02 \x01(\x05\"-\n\x0cVoteResponse\x12\x1d\n\x06status\x18\x01 \x01(\x0e\x32\r.mafia.Status*\x9c\x01\n\x06Status\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x0b\n\x07SUCCESS\x10\x01\x12\x0e\n\nSTART_GAME\x10\x02\x12\x0e\n\nYOU_KILLED\x10\x03\x12\x0c\n\x08\x44\x41Y_VOTE\x10\x04\x12\x0e\n\nNIGHT_VOTE\x10\x05\x12\x15\n\x11ROLE_DISTRIBUTION\x10\x06\x12\x0c\n\x08\x45ND_GAME\x10\x07\x12\x18\n\x14MORNING_NOTIFICATION\x10\x08\x32\xdb\x01\n\x0bMafiaClient\x12\x33\n\x0eGetNewPlayerId\x12\x0e.mafia.Request\x1a\x0f.mafia.PlayerId\"\x00\x12/\n\tSubscribe\x12\r.mafia.Player\x1a\x0f.mafia.Response\"\x00\x30\x01\x12/\n\x0bUnsubscribe\x12\r.mafia.Player\x1a\x0f.mafia.Response\"\x00\x12\x35\n\x08SendVote\x12\x12.mafia.VoteRequest\x1a\x13.mafia.VoteResponse\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'mafiaRPC_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _STATUS._serialized_start=204
-  _STATUS._serialized_end=360
+  _STATUS._serialized_start=305
+  _STATUS._serialized_end=461
   _REQUEST._serialized_start=25
   _REQUEST._serialized_end=51
   _PLAYERID._serialized_start=53
@@ -30,6 +30,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _PLAYER._serialized_end=128
   _RESPONSE._serialized_start=130
   _RESPONSE._serialized_end=201
-  _MAFIACLIENT._serialized_start=363
-  _MAFIACLIENT._serialized_end=527
+  _VOTEREQUEST._serialized_start=203
+  _VOTEREQUEST._serialized_end=255
+  _VOTERESPONSE._serialized_start=257
+  _VOTERESPONSE._serialized_end=302
+  _MAFIACLIENT._serialized_start=464
+  _MAFIACLIENT._serialized_end=683
 # @@protoc_insertion_point(module_scope)

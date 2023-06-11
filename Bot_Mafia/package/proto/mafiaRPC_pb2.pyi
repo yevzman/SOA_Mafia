@@ -44,5 +44,19 @@ class Response(_message.Message):
     status: Status
     def __init__(self, status: _Optional[_Union[Status, str]] = ..., data: _Optional[str] = ...) -> None: ...
 
+class VoteRequest(_message.Message):
+    __slots__ = ["player_id", "session_id"]
+    PLAYER_ID_FIELD_NUMBER: _ClassVar[int]
+    SESSION_ID_FIELD_NUMBER: _ClassVar[int]
+    player_id: int
+    session_id: int
+    def __init__(self, session_id: _Optional[int] = ..., player_id: _Optional[int] = ...) -> None: ...
+
+class VoteResponse(_message.Message):
+    __slots__ = ["status"]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    status: Status
+    def __init__(self, status: _Optional[_Union[Status, str]] = ...) -> None: ...
+
 class Status(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = []

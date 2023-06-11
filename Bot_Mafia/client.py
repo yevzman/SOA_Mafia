@@ -3,6 +3,8 @@ from __future__ import print_function
 
 import socket
 import sys
+import time
+
 import grpc
 import threading
 import package.proto.mafiaRPC_pb2_grpc as mafiaGRPC
@@ -27,11 +29,25 @@ game_status = GameStatus.NO_STATUS
 
 def start_notifier(stub, player):
     global game_status
+    session_id = -1
     try:
         for event in stub.Subscribe(player):
+            if game_status != GameStatus.STARTED:
+                print()
+            print(event.data, flush=True)
             if event.status == START_GAME:
                 game_status = GameStatus.STARTED
-            print('\n' + event.data)
+                session_id = int(event.data.split('\n')[1].split(': ')[1])
+            elif event.status == DAY_VOTE or event.status == NIGHT_VOTE:
+                while True:
+                    player_id = int(input('Write player id you want to vote: '))
+                    response = stub.SendVote(VoteRequest(player_id=player_id, session_id=session_id))
+                    if response.status == SUCCESS:
+                        break
+                    print('Bad value. Try again!', flush=True)
+            elif event.status == END_GAME:
+                game_status = GameStatus.NO_STATUS
+                return
             if connection_status == 0:
                 return
     except Exception:
@@ -46,17 +62,19 @@ def start_session(stub, player_name):
     # print(f'New player with name {player_name} and id {response.id}')
     host_address = socket.gethostbyname(socket.gethostname())
     player = Player(id=response.id, name=player_name, address=host_address)
+    notifier_thread = None
     while True:
-        ans = input('If you want join the game, write \'yes\', or no to quit the game: ')
+        ans = input('If you want join the game, write \'yes\', or \'no\' to quit the game: ')
         if ans == 'yes':
             print('Please wait. When 4 players join the server, game will start!')
-            t = threading.Thread(target=start_notifier, args=(stub, player,))
-            t.start()
+            notifier_thread = threading.Thread(target=start_notifier, args=(stub, player,))
+            notifier_thread.start()
             while game_status == GameStatus.NO_STATUS:
                 quit_ans = input('If you want leave game, write \'quit\': ')
                 if quit_ans == 'quit':
                     stub.Unsubscribe(player)
-            t.join()
+            notifier_thread.join()
+            stub.Unsubscribe(player)
         elif ans == 'no':
             response: Response = stub.Unsubscribe(player)
             print('Response status: ', response.status)
