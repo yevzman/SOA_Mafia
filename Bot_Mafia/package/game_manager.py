@@ -71,7 +71,8 @@ class EventQueue(metaclass=Singleton):
 
     def delete_session_actions(self, session_id):
         with self.session_action_lock:
-            self.session_action.pop(session_id)
+            if session_id in self.session_action:
+                self.session_action.pop(session_id)
 
     def add_event(self, player_id: int, event: Event):
         with self.lock:
@@ -233,10 +234,6 @@ class SessionMaker:
         logger.debug('GAME ENDED!')
         with self.lock:
             self.CURRENT_AMOUNT_SESSION += 1
-            res = future.result()
-            logger.debug(f'Future result: {res}')
-            for player in res:
-                self.player_manager.set_not_in_game_status(player.id)
 
     def try_create_new_session(self):
         if self.CURRENT_AMOUNT_SESSION < self.MAX_SESSIONS:
@@ -265,7 +262,8 @@ class SessionMaker:
 
     def delete_player(self, _player):
         with self.lock:
-            self.player_queue.remove(_player)
+            if _player in self.player_queue:
+                self.player_queue.remove(_player)
 
 
 class SessionManager:
@@ -389,6 +387,10 @@ class SessionManager:
             self.__start_day_notify()
             player_id = self.__day_vote()
             self.__kill_player(player_id)   # day vote results
+            logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
+            logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
+            if len(self.Mafias) == 0 or len(self.Mafias) == len(self.Citizens):
+                break
             self.__start_night_notify()
             player_id = self.__night_vote()
             self.__kill_player(player_id)  # night vote results
