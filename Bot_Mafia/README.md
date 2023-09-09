@@ -19,10 +19,21 @@
 жителей или мафии
 5) Возможность ведения нескольких сеансов игры одновременно,
 назначая каждому из сеансов уникальный идентификатор.
+6) Наличие возможности запускать игрока как бота (добавить опцию -b)
 
 ВАЖНОЕ УТОЧНЕНИЕ:
 В первый день игры (то есть первое голосование), чтобы проголосовать необходимо нажать Enter и затем вписать номер ID 
 человека, иначе голос не считается. (На данный момент абсолютно не понятно из-за чего возникает такая необходимость, возможно где-то подвисает из-за переключения тредов)
+
+Запустить сервер для брокера сообщений:
+```
+sudo docker run -it --rm --name rabbitmq -p 5552:5552 -e RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS='-rabbitmq_stream advertised_host localhost' rabbitmq:latest
+```
+
+Запустить плагин для rabbitMQ:
+```
+sudo docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stream
+```
 
 Запустить сервер:
 ```
@@ -31,7 +42,7 @@ docker-compose build && docker-compose up
 
 Запустить клиента:
 ```
-pip3 install -r requirements.txt && python3 client.py
+pip3 install -r requirements.txt && python3 client.py -p 5345
 ```
 
 Скриншот одной из сессий:

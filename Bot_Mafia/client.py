@@ -106,7 +106,8 @@ def make_messages():
     global stop_messages, name, messages
     while not stop_messages:
         msg = input(name + ': ')
-        messages.put(msg)
+        if msg.strip().rstrip() != '':
+            messages.put(msg)
         time.sleep(0.02)
         time.sleep(0)
 
@@ -159,8 +160,9 @@ def start_notifier(stub, player, as_bot):
                                 continue
                             break
                     else:
-                        players_dict = eval(str(event.data).split('chose ')[1].split(' using')[0])
-                        player_id, player_name = random.choice(list(players_dict.items()))
+                        rand_player = random.choice(str(event.data).split('chose {')[1].split('} using')[0].split(', '))
+                        player_id, player_name = tuple(rand_player.split(':'))
+                        player_id = int(player_id)
                         print(f'Vote for player {player_id}, {player_name}')
                     response = stub.SendVote(VoteRequest(player_id=player_id, session_id=session_id))
                     if response.status == SUCCESS:
@@ -199,10 +201,11 @@ def start_notifier(stub, player, as_bot):
 
 
 def start_session(stub, player_name, as_bot):
-    global game_status
+    global game_status, name
     response: PlayerId = stub.GetNewPlayerId(Request(message=''))
     if player_name == default_bot_name:
         player_name = f'Bot_{response.id}'
+        name = player_name
         print(f'Your name is {player_name}')
     # print(f'New player with name {player_name} and id {response.id}')
     host_address = socket.gethostbyname(socket.gethostname())
