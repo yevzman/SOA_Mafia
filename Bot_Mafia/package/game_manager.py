@@ -12,6 +12,7 @@ from enum import Enum
 import logging
 from concurrent.futures import ThreadPoolExecutor
 import time
+import traceback
 
 FORMAT = '%(asctime)s - [%(levelname)s] -  %(name)s - (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
@@ -80,14 +81,25 @@ class EventQueue(metaclass=Singleton):
                 self.event_queue[player_id] = []
             self.event_queue[player_id].append(event)
 
-    def queue_has_any_event(self, player_id):
+    def player_has_any_event(self, player_id):
         return len(self.event_queue[player_id]) > 0
+
+    def has_any_event(self):
+        for item in self.event_queue:
+            if len(self.event_queue[item]) > 0:
+                return 1
+        return 0
 
     def get_event(self, player_id):
         with self.lock:
             event = self.event_queue[player_id].pop(0)
             return event
 
+
+def wait_while_queue_not_empty():
+    event_queue = EventQueue()
+    while event_queue.has_any_event():
+        time.sleep(0)
 
 class AddPlayerEvent(Event):
     def __init__(self, player_name, player_id):
@@ -153,6 +165,28 @@ class VoteEvent(Event):
     def run(self):
         return Response(data=f'Vote player you want to chose {self.players_str} using his ID', status=self.status)
 
+
+class CommunicationEvent(Event):
+    '''
+    message CommunicationParams {
+        string channel = 1;
+        string user = 2;
+        string password = 3;
+        int32 timeout = 4;
+    }
+    '''
+    def __init__(self, channel, user, password, timeout=10):
+        logger.debug(f'VoteEvent with status {START_COMMUNICATION}')
+        self.channel = channel
+        self.user = user
+        self.password = password
+        self.status = START_COMMUNICATION
+        self.timeout = timeout
+
+    def run(self):
+        return Response(
+            communication=CommunicationParams(channel=self.channel, user=self.user, password=self.password, timeout=self.timeout),
+            data=f'Start communication', status=self.status)
 
 class MafiaWakeUpEvent(Event):
     def run(self):
@@ -303,6 +337,21 @@ class SessionManager:
         for player in self.players:
             event_queue.add_event(player.id, event=Event('Day started!'))
         self.__notify_all_alive_players()
+    
+    def __start_communication(self, is_day=True):
+        logger.debug('Communication event')
+        event_queue = EventQueue()
+        channel = self.players[0].name + '_channel'
+        if not is_day:
+            for player in self.Mafias:
+                event_queue.add_event(player.id, event=CommunicationEvent(channel, 'guest', 'guest', timeout=8 * len(self.Mafias)))
+            for player in self.Mafias:
+                self.player_manger.notify_player(player.id, True)
+        else:
+            for player in self.players:
+                event_queue.add_event(player.id, event=CommunicationEvent(channel, 'guest', 'guest', timeout=45))
+            self.__notify_all_alive_players()
+        time.sleep(10)
 
     def __start_night_notify(self):
         event_queue = EventQueue()
@@ -324,7 +373,7 @@ class SessionManager:
             self.roles[player.id] = MafiaRole.CITIZEN
             event_queue.add_event(player.id, event=RoleDistributionEvent('CITIZEN'))
         logger.debug('Citizens: ' + get_players_list_str(self.Citizens))
-        self.__notify_all_alive_players()
+        self.__notify_all_alive_players() 
 
     def __day_vote(self):
         event_queue = EventQueue()
@@ -378,26 +427,43 @@ class SessionManager:
         self.__notify_all_alive_players()
 
     def start_game(self):
-        self.__start_game_notify()
-        self.__distribute_roles()
+        try:
+            self.__start_game_notify()
+            wait_while_queue_not_empty()
+            self.__distribute_roles()
+            wait_while_queue_not_empty()
 
-        while 0 < len(self.Mafias) < len(self.Citizens):
-            logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
-            logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
-            self.__start_day_notify()
-            player_id = self.__day_vote()
-            self.__kill_player(player_id)   # day vote results
-            logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
-            logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
-            if len(self.Mafias) == 0 or len(self.Mafias) == len(self.Citizens):
-                break
-            self.__start_night_notify()
-            player_id = self.__night_vote()
-            self.__kill_player(player_id)  # night vote results
-        result = None
-        if len(self.Mafias) == 0:
-            result = 'Citizens won the Game!'
-        else:
-            result = 'Mafia won the Game!'
-        self.__end_game_notify(result=result)
-        return self.players
+            while 0 < len(self.Mafias) < len(self.Citizens):
+                logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
+                logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
+                self.__start_day_notify()
+                wait_while_queue_not_empty()
+                self.__start_communication(is_day=True)
+                wait_while_queue_not_empty()
+                player_id = self.__day_vote()
+                self.__kill_player(player_id)   # day vote results
+                wait_while_queue_not_empty()
+                logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
+                logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
+                if len(self.Mafias) == 0 or len(self.Mafias) == len(self.Citizens):
+                    break
+                self.__start_night_notify()
+                wait_while_queue_not_empty()
+                if len(self.Mafias) > 1:
+                    self.__start_communication(is_day=False)
+                    wait_while_queue_not_empty()
+                player_id = self.__night_vote()
+                wait_while_queue_not_empty()
+                self.__kill_player(player_id)  # night vote results
+                wait_while_queue_not_empty()
+            result = None
+            if len(self.Mafias) == 0:
+                result = 'Citizens won the Game!'
+            else:
+                result = 'Mafia won the Game!'
+            self.__end_game_notify(result=result)
+            return self.players
+        except Exception as error:
+            print(traceback.format_exc())
+            print('Exception occured')
+            print(error)

@@ -26,6 +26,7 @@ enum Status {
   ROLE_DISTRIBUTION = 6;
   END_GAME = 7;
   MORNING_NOTIFICATION = 8;
+  START_COMMUNICATION = 9;
 }
 
 message Request {
@@ -45,6 +46,7 @@ message Player {
 message Response {
   optional Status status = 1;
   string data = 2;
+  optional CommunicationParams communication = 3;
 }
 
 message VoteRequest {
@@ -54,4 +56,10 @@ message VoteRequest {
 
 message VoteResponse {
   Status status = 1;
+}
+message CommunicationParams {
+  string channel = 1;
+  string user = 2;
+  string password = 3;
+  int32 timeout = 4;
 }

@@ -13,7 +13,7 @@ logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-thread_amount = 16
+thread_amount = 20
 game_event_queue = EventQueue()
 
 
@@ -46,7 +46,7 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
         while True:
             with notifier:
                 notifier.wait()
-            while game_event_queue.queue_has_any_event(request.id):
+            while game_event_queue.player_has_any_event(request.id):
                 response = game_event_queue.get_event(request.id).run()
                 yield response
 
@@ -75,7 +75,8 @@ class MafiaClientServicer(mafiaGRPC.MafiaClientServicer):
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=thread_amount))
     mafiaGRPC.add_MafiaClientServicer_to_server(MafiaClientServicer(), server)
-    server.add_insecure_port('[::]:5345')
+    r_port = server.add_insecure_port('[::]:5345')
+    logger.debug('gRPC server returned port ' + str(r_port))
     logger.debug('Starting server on port 5345')
     server.start()
     server.wait_for_termination()

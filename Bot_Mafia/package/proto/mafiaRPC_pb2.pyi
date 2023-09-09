@@ -1,7 +1,7 @@
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DAY_VOTE: Status
 DESCRIPTOR: _descriptor.FileDescriptor
@@ -10,9 +10,22 @@ FAIL: Status
 MORNING_NOTIFICATION: Status
 NIGHT_VOTE: Status
 ROLE_DISTRIBUTION: Status
+START_COMMUNICATION: Status
 START_GAME: Status
 SUCCESS: Status
 YOU_KILLED: Status
+
+class CommunicationParams(_message.Message):
+    __slots__ = ["channel", "password", "timeout", "user"]
+    CHANNEL_FIELD_NUMBER: _ClassVar[int]
+    PASSWORD_FIELD_NUMBER: _ClassVar[int]
+    TIMEOUT_FIELD_NUMBER: _ClassVar[int]
+    USER_FIELD_NUMBER: _ClassVar[int]
+    channel: str
+    password: str
+    timeout: int
+    user: str
+    def __init__(self, channel: _Optional[str] = ..., user: _Optional[str] = ..., password: _Optional[str] = ..., timeout: _Optional[int] = ...) -> None: ...
 
 class Player(_message.Message):
     __slots__ = ["address", "id", "name"]
@@ -37,12 +50,14 @@ class Request(_message.Message):
     def __init__(self, message: _Optional[str] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ["data", "status"]
+    __slots__ = ["communication", "data", "status"]
+    COMMUNICATION_FIELD_NUMBER: _ClassVar[int]
     DATA_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
+    communication: CommunicationParams
     data: str
     status: Status
-    def __init__(self, status: _Optional[_Union[Status, str]] = ..., data: _Optional[str] = ...) -> None: ...
+    def __init__(self, status: _Optional[_Union[Status, str]] = ..., data: _Optional[str] = ..., communication: _Optional[_Union[CommunicationParams, _Mapping]] = ...) -> None: ...
 
 class VoteRequest(_message.Message):
     __slots__ = ["player_id", "session_id"]

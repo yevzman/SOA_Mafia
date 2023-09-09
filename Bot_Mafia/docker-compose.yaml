@@ -1,6 +1,6 @@
 version: "3"
 services:
   server:
-    image: yevzman/mafia_server
+    image: yevzman/mafia_server_voice
     ports:
       - "5345:5345/tcp"
