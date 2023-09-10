@@ -1,0 +1,9 @@
+certifi==2023.7.22
+charset-normalizer==3.2.0
+idna==3.4
+mmh3==4.0.1
+PyAudio==0.2.13
+requests==2.31.0
+rstream==0.11.1
+uamqp==1.6.5
+urllib3==2.0.4

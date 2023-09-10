@@ -7,7 +7,6 @@ import codecs
 
 async def on_message(msg: bytes, message_context: MessageContext):
     global stream, wf
-    print('got message')
     stream.write(msg)
     wf.writeframes(msg)
 

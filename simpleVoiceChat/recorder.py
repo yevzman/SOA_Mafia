@@ -9,10 +9,10 @@ async def publish():
     async with Producer(
       host='localhost',
       port=5552,
-      username='voicechat',
-      password='ZZZxxx123'
+      username='guest',
+      password='guest'
     ) as producer:
-        await producer.create_stream('mystream_new', exists_ok=True)
+        await producer.create_stream('mystream', exists_ok=True)
         for i in range(0, int(fs / chunk * seconds)):
             data = stream.read(chunk)
             frames.append(data)
