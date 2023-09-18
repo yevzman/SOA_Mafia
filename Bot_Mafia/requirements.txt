@@ -14,3 +14,4 @@ rstream==0.11.1
 soupsieve==2.4.1
 uamqp==1.6.5
 urllib3==2.0.4
+redis==5.0.0

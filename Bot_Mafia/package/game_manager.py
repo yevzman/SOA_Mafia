@@ -13,11 +13,18 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 import time
 import traceback
+import redis
+import pickle
 
 FORMAT = '%(asctime)s - [%(levelname)s] -  %(name)s - (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s'
 logging.basicConfig(format=FORMAT, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+redis_server = redis.Redis()
+
+LIVE_GAME_LIST = 'live_games'
+LAST_GAME_LIST = 'last_games'
+SCOREBOARD = 'scoreboard'
 
 class Singleton(type):
     _instances = {}
@@ -313,6 +320,8 @@ class SessionManager:
         self.citizens_amount = 3
         self.mafias_amount = 1
         self.session_id = _players[0].id
+        logger.debug('add value to redis server')
+        redis_server.lpush(LIVE_GAME_LIST, str(self.session_id))
 
     def __notify_all_alive_players(self):
         for player in self.alive_players:
@@ -331,6 +340,9 @@ class SessionManager:
         self.__notify_all_alive_players()
         for player in self.alive_players:
             self.player_manger.set_not_in_game_status(player.id)
+        redis_server.lrem(LIVE_GAME_LIST, 0, str(self.session_id))
+        redis_server.lpush(LAST_GAME_LIST, str(self.session_id))
+        logger.debug('transfer values inredis server')
 
     def __start_day_notify(self):
         event_queue = EventQueue()
@@ -425,6 +437,23 @@ class SessionManager:
         for p in self.alive_players:
             event_queue.add_event(p.id, Event(f'Player {player.name} died!'))
         self.__notify_all_alive_players()
+    
+    def update_scoreboard(self, finish=False, who_won='citizens'):
+        status = dict()
+        status['session_id'] = str(self.session_id)
+        status['result'] = 'game in progress'
+        if finish:
+            status['result'] = 'won ' + who_won
+        players_info = []
+        for player in self.players:
+            players_info.append({
+                'user_id': player.id,
+                'user_name': player.name,
+                'is_mafia': self.roles[player.id] == MafiaRole.MAFIA
+            })
+        status['players'] = players_info
+        redis_server.set(f'{SCOREBOARD}:{self.session_id}', pickle.dumps(status))
+
 
     def start_game(self):
         try:
@@ -434,21 +463,25 @@ class SessionManager:
             wait_while_queue_not_empty()
 
             while 0 < len(self.Mafias) < len(self.Citizens):
+                self.update_scoreboard()
                 logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
                 logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
                 self.__start_day_notify()
                 wait_while_queue_not_empty()
                 self.__start_communication(is_day=True)
                 wait_while_queue_not_empty()
+                self.update_scoreboard()
                 player_id = self.__day_vote()
                 self.__kill_player(player_id)   # day vote results
                 wait_while_queue_not_empty()
+                self.update_scoreboard()
                 logger.debug(f'Mafias: {get_players_list_str(self.Mafias)}')
                 logger.debug(f'Citizens: {get_players_list_str(self.Citizens)}')
                 if len(self.Mafias) == 0 or len(self.Mafias) == len(self.Citizens):
                     break
                 self.__start_night_notify()
                 wait_while_queue_not_empty()
+                self.update_scoreboard()
                 if len(self.Mafias) > 1:
                     self.__start_communication(is_day=False)
                     wait_while_queue_not_empty()
@@ -456,14 +489,19 @@ class SessionManager:
                 wait_while_queue_not_empty()
                 self.__kill_player(player_id)  # night vote results
                 wait_while_queue_not_empty()
+                self.update_scoreboard()
+
             result = None
             if len(self.Mafias) == 0:
                 result = 'Citizens won the Game!'
+                self.update_scoreboard(finish=True)
             else:
                 result = 'Mafia won the Game!'
+                self.update_scoreboard(finish=True, who_won='mafia')
             self.__end_game_notify(result=result)
             return self.players
         except Exception as error:
+            logger.warn('Exception occured!')
             print(traceback.format_exc())
             print('Exception occured')
             print(error)

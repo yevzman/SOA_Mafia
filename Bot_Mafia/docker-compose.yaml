@@ -1,6 +1,18 @@
 version: "3"
 services:
+  redis-stack-server:
+    image: redis/redis-stack-server:latest
+    ports:
+      - "6379:6379/tcp"
   server:
     image: yevzman/mafia_server_voice
     ports:
       - "5345:5345/tcp"
+    depends_on:
+      - redis-stack-server
+  gql_server:
+    image: yevzman/mafia_gql_server
+    ports:
+      - "6345:6345/tcp"
+    depends_on:
+      - redis-stack-server
