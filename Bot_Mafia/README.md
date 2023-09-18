@@ -50,3 +50,29 @@ pip3 install -r requirements.txt && python3 client.py -p 5345
 Все игроки управляются вручную. Выиграла Мафия!
 ![Mafia_results.png](Mafia_results.png)
 
+
+**GraphQL**
+
+Чтобы сделать запросы, нужно перейти по адрессу: 0.0.0.0:6345
+
+
+Пример запроса:
+```
+query {
+  getLiveGames
+  getLastGames
+  getLiveScoreboard(sessionId:"4") {
+    standings {
+      sessionId
+      players {
+        userId
+        userName
+        isMafia
+      }
+      result
+    }
+  }
+}
+```
+
+Scoreboard обновляется с использованием текущего состояния игр(используя Redis)
